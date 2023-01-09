@@ -19,7 +19,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -44,9 +43,7 @@ class _CameraExamplePageState extends State<CameraExamplePage> {
 
     _controller = CameraController(_cameras[0], ResolutionPreset.medium);
     _controller.initialize().then((_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {});
     }).catchError((Object e) {
       if (e is CameraException) {
@@ -83,10 +80,8 @@ class _CameraExamplePageState extends State<CameraExamplePage> {
         child: const Icon(Icons.camera_alt),
         onPressed: () async {
           try {
-            // 사진 촬영을 시도하고 저장되는 경로를 로그로 남깁니다.
             final file = await _controller.takePicture();
 
-            // 사진을 촬영하면, 새로운 화면으로 넘어갑니다.
             if (!mounted) return;
             Navigator.push(
               context,
