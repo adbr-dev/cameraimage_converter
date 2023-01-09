@@ -1,8 +1,11 @@
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:cameraimage_converter/cameraimage_converter.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 late List<CameraDescription> _cameras;
 
@@ -36,15 +39,38 @@ class CameraExamplePage extends StatefulWidget {
 
 class _CameraExamplePageState extends State<CameraExamplePage> {
   late CameraController _controller;
+  int count = 0;
 
   @override
   void initState() {
     super.initState();
 
-    _controller = CameraController(_cameras[0], ResolutionPreset.medium);
+    _controller = CameraController(_cameras[1], ResolutionPreset.medium);
     _controller.initialize().then((_) {
       if (!mounted) return;
       setState(() {});
+
+      _controller.startImageStream((image) async {
+        // save only 2 cameraImages
+        if (count > 1) {
+          await _controller.stopImageStream();
+          return;
+        }
+        count++;
+
+        //
+        // conver png
+        final start = DateTime.now().millisecondsSinceEpoch;
+        final bytes = await CameraImageConverter.convertImageToPng(image);
+        final end = DateTime.now().millisecondsSinceEpoch;
+
+        // log to time
+        if (bytes == null) return log('result null (png)');
+        log('[time ${end - start} ms] convert png');
+
+        // download to gallery (png)
+        await ImageGallerySaver.saveImage(bytes);
+      });
     }).catchError((Object e) {
       if (e is CameraException) {
         switch (e.code) {
