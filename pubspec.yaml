@@ -8,9 +8,10 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
-  camera: ^0.9.3+1
   flutter:
     sdk: flutter
+  
+  camera: ^0.10.1
   image: ^4.0.7
 
 dev_dependencies:
