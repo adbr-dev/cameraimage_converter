@@ -76,10 +76,12 @@ class CameraImageConverter {
     final int height = cameraImage.height;
     final int uvRowStride = cameraImage.planes[1].bytesPerRow;
     final int uvPixelStride = cameraImage.planes[1].bytesPerPixel!;
+    // https://gist.github.com/Alby-o/fe87e35bc21d534c8220aed7df028e03?permalink_comment_id=3989031#gistcomment-3989031
+    const shift = (0xFF << 24);
 
     // Create Image buffer
     final Image image = Image(width: width, height: height);
-
+    final data = image.data!.toUint8List();
     // Fill image buffer with plane[0] from YUV420_888
     for (int x = 0; x < image.width; x++) {
       for (int y = 0; y < image.height; y++) {
@@ -99,11 +101,14 @@ class CameraImageConverter {
 
         // color: 0x FF  FF  FF  FF
         //           A   B   G   R
-        image.data?.setPixelRgb(x, y, r, g, b);
+        data[index] = shift | (b << 16) | (g << 8) | r;
       }
     }
-
-    return image;
+    return Image.fromBytes(
+      width: width,
+      height: height,
+      bytes: data.buffer,
+    );
   }
 
   /// CameraImage BGRA8888 -> Image
