@@ -1,11 +1,10 @@
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:cameraimage_converter/cameraimage_converter.dart';
-import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:image/image.dart' as img;
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:cameraimage_converter/cameraimage_converter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 late List<CameraDescription> _cameras;
 
@@ -40,6 +39,7 @@ class CameraExamplePage extends StatefulWidget {
 class _CameraExamplePageState extends State<CameraExamplePage> {
   late CameraController _controller;
   int count = 0;
+  Uint8List? _bytes;
 
   @override
   void initState() {
@@ -49,28 +49,6 @@ class _CameraExamplePageState extends State<CameraExamplePage> {
     _controller.initialize().then((_) {
       if (!mounted) return;
       setState(() {});
-
-      _controller.startImageStream((image) async {
-        // save only 2 cameraImages
-        if (count > 1) {
-          await _controller.stopImageStream();
-          return;
-        }
-        count++;
-
-        //
-        // conver png
-        final start = DateTime.now().millisecondsSinceEpoch;
-        final bytes = await CameraImageConverter.convertImageToPng(image);
-        final end = DateTime.now().millisecondsSinceEpoch;
-
-        // log to time
-        if (bytes == null) return log('result null (png)');
-        log('[time ${end - start} ms] convert png');
-
-        // download to gallery (png)
-        await ImageGallerySaver.saveImage(bytes);
-      });
     }).catchError((Object e) {
       if (e is CameraException) {
         switch (e.code) {
@@ -96,31 +74,79 @@ class _CameraExamplePageState extends State<CameraExamplePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Take a picture'),
+        actions: [
+          Visibility(
+              visible: _bytes != null,
+              child: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  _bytes = null;
+                  count = 0;
+                  setState(() {});
+                },
+              ))
+        ],
       ),
       body: (_controller.value.isInitialized)
-          ? CameraPreview(_controller)
+          ? (_bytes != null)
+              ? Image.memory(_bytes!)
+              : CameraPreview(_controller)
           : const Center(
               child: CircularProgressIndicator(),
             ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.camera_alt),
-        onPressed: () async {
-          try {
-            final file = await _controller.takePicture();
-
-            if (!mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DisplayPicturePage(imagePath: file.path),
-              ),
-            );
-          } catch (e) {
-            log(e.toString());
-          }
-        },
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: _startImageStream,
+            child: const Icon(Icons.run_circle_outlined),
+          ),
+          FloatingActionButton(
+            onPressed: _takePicture,
+            child: const Icon(Icons.camera_alt),
+          ),
+        ],
       ),
     );
+  }
+
+  void _startImageStream() {
+    _controller.startImageStream((image) async {
+      // only 1
+      if (count > 0) return await _controller.stopImageStream();
+      count++;
+
+      //
+      // conver png
+      final start = DateTime.now().millisecondsSinceEpoch;
+      _bytes = await CameraImageConverter.convertImageToPng(image);
+      final end = DateTime.now().millisecondsSinceEpoch;
+
+      // log to time
+      if (_bytes == null) return log('result null (png)');
+      log('[time ${end - start} ms] convert png');
+
+      setState(() {});
+
+      // // download to gallery (png)
+      // await ImageGallerySaver.saveImage(bytes);
+    });
+  }
+
+  void _takePicture() async {
+    try {
+      final file = await _controller.takePicture();
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DisplayPicturePage(imagePath: file.path),
+        ),
+      );
+    } catch (e) {
+      log(e.toString());
+    }
   }
 }
 
